@@ -1,0 +1,456 @@
+﻿@page "/test"
+@rendermode InteractiveServer
+@using System.Diagnostics
+@using FlowState.Components
+@using FlowState.Models
+
+<GraphToolbar OnSave="SaveGraph"
+              OnClear="ClearGraph"
+              OnLoad="LoadGraph"
+              OnExecute="ExecuteGraph"
+              OnToggleReadOnly="ToggleReadOnly"
+              OnUndo="Undo"
+              OnRedo="Redo"
+              OnArrange="ArrangeGraph"
+              OnSetSelectMode="SetSelectMode"
+              OnSetPanMode="SetPanMode"
+              IsReadOnly="isReadOnly"
+              CurrentMode="@currentCanvasMode" />
+
+<FlowCanvas @ref="canvas"
+            Height="calc(100vh - 60px)"
+            Width="100vw"
+            Graph="graph"
+            IsReadOnly="isReadOnly"
+            OnCanvasLoaded="OnLoaded"
+            OnSocketLongPress="HandleSocketLongPress"
+            OnContextMenu="HandleContextMenu">
+    <BackgroundContent>
+        <FlowBackground class="flow-grid-lines" />
+    </BackgroundContent>
+</FlowCanvas>
+
+<FlowContextMenu @ref="contextMenu"
+                 Graph="graph" />
+
+@* <style>
+    .simple-grid {
+        background: #111827;
+        background-image: 
+            linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px);
+        background-size: 100px 100px;
+    }
+
+    .dual-grid {
+        background: #111827;
+        background-image:
+        /* Main grid lines */
+        linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px),
+        /* Minor grid lines */
+        linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+        background-size: 100px 100px, /* Main grid */
+        100px 100px, 20px 20px, /* Minor grid */
+        20px 20px;
+        background-position: 0 0, 0 0, 0 0, 0 0;
+    }
+
+    .dot-grid {
+        background: #111827;
+        background-image: radial-gradient(circle, rgba(255,255,255,0.15) 1px, transparent 1px);
+        background-size: 25px 25px;
+    }
+
+    .solid-bg {
+        background: #0f172a;
+    }
+</style> *@
+
+@code {
+    FlowCanvas? canvas;
+    FlowGraph graph = new();
+    FlowContextMenu? contextMenu;
+    private string data = "{}";
+    private bool isReadOnly = false;
+    private string currentCanvasMode = "Pan";
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        graph.RegisterNode<InputNode>();
+        graph.RegisterNode<IfElseNode>();
+        graph.RegisterNode<SumNode>();
+        graph.RegisterNode<MultiplyNode>();
+        graph.RegisterNode<WatchNode>();
+        graph.RegisterNode<GroupNode>();
+    }
+
+    private async Task OnLoaded()
+    {
+        if (canvas == null) return;
+
+        await canvas.SetCanvasModeAsync(CanvasMode.Pan);
+
+        graph.TypeCompatibiltyRegistry.Register<float>(typeof(int));
+
+        // Create flow: Sum two inputs, compare with threshold, display result
+
+        // Two input nodes for Sum
+        var fromNodeInfo = await graph.CreateNodeAsync<InputNode>(50, 80, []);
+        var toNodeInfo = await graph.CreateNodeAsync<InputNode>(50, 220, []);
+
+        // Sum node
+        var sumNode = await graph.CreateNodeAsync<SumNode>(350, 150, []);
+
+        // Threshold input for comparison
+        var thresholdNode = await graph.CreateNodeAsync<InputNode>(350, 320, []);
+
+        // If-Else comparison node
+        var ifElseNode = await graph.CreateNodeAsync<IfElseNode>(650, 200, []);
+
+        // Watch nodes for true and false paths
+        var watchTrue = await graph.CreateNodeAsync<WatchNode>(950, 120, []);
+        var watchFalse = await graph.CreateNodeAsync<WatchNode>(950, 280, []);
+
+        await Task.Delay(100);
+
+        // Connect: Input1 + Input2 -> Sum
+        await graph.ConnectAsync(fromNodeInfo.Id, sumNode.Id, "Output", "InputA");
+        await graph.ConnectAsync(toNodeInfo.Id, sumNode.Id, "Output", "InputB");
+
+        // Connect: Sum result -> IfElse InputA (value to compare)
+        await graph.ConnectAsync(sumNode.Id, ifElseNode.Id, "Output", "InputA");
+
+        // Connect: Threshold -> IfElse InputB (compare against this)
+        await graph.ConnectAsync(thresholdNode.Id, ifElseNode.Id, "Output", "InputB");
+
+        // Connect: IfElse True path -> Watch (when condition is true)
+        await graph.ConnectAsync(ifElseNode.Id, watchTrue.Id, "OutputTrue", "Input");
+
+        // Connect: IfElse False path -> Watch (when condition is false)
+        await graph.ConnectAsync(ifElseNode.Id, watchFalse.Id, "OutputFalse", "Input");
+    }
+
+    private async Task SaveGraph()
+    {
+        data = await graph.SerializeAsync();
+    }
+
+    private async Task ClearGraph()
+    {
+        if(graph.Canvas!=null)
+            await  graph.Canvas.ClearAsync();
+    }
+
+    private async Task LoadGraph()
+    {
+        await graph.DeserializeAsync(data);
+    }
+
+    private async Task ExecuteGraph()
+    {
+        await graph.ExecuteAsync();
+    }
+    
+    private async Task ToggleReadOnly()
+    {
+        isReadOnly = !isReadOnly;
+        if (canvas != null)
+        {
+            await canvas.SetReadOnlyAsync(isReadOnly);
+        }
+    }
+    
+    
+    private void HandleSocketLongPress(SocketLongPressEventArgs e)
+    {
+        Debug.WriteLine($"Socket: {e.Socket.Name}, X: {e.X}, Y: {e.Y}");
+    }
+    
+    private async Task HandleContextMenu(CanvasContextMenuEventArgs e)
+    {
+        if (contextMenu != null)
+        {
+            // Pass both screen coords (for menu positioning) and canvas coords (for node creation)
+            await contextMenu.ShowAsync(e.ClientX, e.ClientY, e.X, e.Y);
+        }
+    }
+
+    private async Task ArrangeGraph()
+    {
+        if (canvas != null)
+            await canvas.ArrangeAsync(useDom: true);
+    }
+
+    private async Task Undo()
+    {
+        await graph.CommandManager.UndoAsync();
+    }
+
+    private async Task Redo()
+    {
+        await graph.CommandManager.RedoAsync();
+    }
+
+    private async Task SetSelectMode()
+    {
+        currentCanvasMode = "Select";
+        if (canvas != null)
+        {
+            await canvas.SetCanvasModeAsync(CanvasMode.Select);
+        }
+    }
+
+    private async Task SetPanMode()
+    {
+        currentCanvasMode = "Pan";
+        if (canvas != null)
+        {
+            await canvas.SetCanvasModeAsync(CanvasMode.Pan);
+        }
+    }
+
+    async Task ZoomIn()
+    {
+        var props = await canvas!.GetViewportPropertiesAsync();
+        await canvas.SetZoomAsync(Math.Min(props.Zoom + 0.1, props.MaxZoom));
+    }
+
+    async Task ZoomOut()
+    {
+        var props = await canvas!.GetViewportPropertiesAsync();
+        await canvas.SetZoomAsync(Math.Max(props.Zoom - 0.1, props.MinZoom));
+    }
+
+    void OnLoaded(CanvasLoadedEventArgs e)
+    {
+        Console.WriteLine($"Canvas loaded with zoom: {e.Zoom}");
+    }
+
+    void HandlePanned(PanEventArgs e)
+    {
+        Console.WriteLine($"Panned to: ({e.X}, {e.Y})");
+    }
+
+    void HandleZoomed(ZoomEventArgs e)
+    {
+        Console.WriteLine($"Zoomed to: {e.Zoom}");
+    }
+
+    void OnNodeMoved(NodeMovedArgs e)
+    {
+        Console.WriteLine($"Node {e.NodeId} moved to ({e.X}, {e.Y})");
+    }
+
+    void HandleNodeSelected(NodeSelectedEventArgs e)
+    {
+        Console.WriteLine($"Node selected: {e.NodeId}");
+    }
+
+    void HandleNodeDeselected(NodeDeselectedEventArgs e)
+    {
+        Console.WriteLine($"Node deselected: {e.NodeId}");
+    }
+
+    void HandleSelectionChanged(SelectionChangedEventArgs e)
+    {
+        Console.WriteLine($"Selected {e.SelectedNodeIds.Length} nodes");
+    }
+
+    void HandleNodesCleared(NodesClearedEventArgs e)
+    {
+        Console.WriteLine($"Cleared {e.ClearedCount} nodes");
+    }
+
+    async Task HandleConnectRequest(ConnectRequestArgs e)
+    {
+        // Custom validation
+        if (ShouldAllowConnection(e.FromSocket, e.ToSocket))
+        {
+            // Let it proceed (don't set Handled)
+        }
+        else
+        {
+            e.Handled = true; // Block the connection
+        }
+    }
+
+
+    private bool ShouldAllowConnection(FlowSocket fromSocket, FlowSocket toSocket)
+    {
+       return true;
+    }
+
+    async Task ShowContextMenu(CanvasContextMenuEventArgs e)
+    {
+        // Show context menu
+        //await contextMenu.ShowAsync(e.ClientX, e.ClientY, e.X, e.Y);
+    }
+
+    void HandleNodeAdded(NodeAddedEventArgs e)
+    {
+        Console.WriteLine($"Node added: {e.NodeId}");
+    }
+
+    void HandleEdgeAdded(EdgeAddedEventArgs e)
+    {
+        Console.WriteLine($"Edge added: {e.EdgeId}");
+    }
+
+    void HandleNodeRemoved(NodeRemovedEventArgs e)
+    {
+        Console.WriteLine($"Node removed: {e.NodeId}");
+    }
+
+    void HandleEdgeRemoved(EdgeRemovedEventArgs e)
+    {
+        Console.WriteLine($"Edge removed: {e.EdgeId}");
+    }
+
+    void HandleAllNodesCleared()
+    {
+        Console.WriteLine("All nodes cleared");
+    }
+
+    /*
+    public async Task Test()
+    {
+        //var canvasEl = graph.ElementRef;
+        //await JS.InvokeVoidAsync("myFunction", canvasEl);
+
+        await graph.SetZoomAsync(1.5); // 150% zoom
+        await graph.SetOffsetAsync(100, 50);
+        await graph.SetReadOnlyAsync(true); // Lock canvas
+
+        // CanvasMode.Select - Click to select nodes, Alt+drag to pan
+        await canvas.SetCanvasModeAsync(CanvasMode.Select);
+
+        // CanvasMode.Pan - Always pan mode
+        await canvas.SetCanvasModeAsync(CanvasMode.Pan);
+
+        var props = await canvas.GetViewportPropertiesAsync();
+        Console.WriteLine($"Zoom: {props.Zoom}, Offset: ({props.OffsetX}, {props.OffsetY});
+
+            await canvas.ClearAsync();
+        await canvas.SelectNodesAsync("node1", "node2", "node3");
+        await canvas.SelectAllNodesAsync();
+        await canvas.ClearNodeSelectionAsync();
+        var selectedIds = await canvas.GetSelectedNodesAsync();
+        canvas.Refresh();
+        }
+        */
+}
+
+        
+
+<style>
+    .flow-node .title {
+        font-weight: 600;
+        font-size: 14px;
+        margin-bottom: 8px;
+        color: white;
+        padding: 12px 16px 8px;
+        background: linear-gradient(90deg, rgba(124,58,237,0.1), transparent);
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+        border-radius: 12px 12px 0 0;
+    }
+
+    .flow-node .body {
+        font-size: 13px;
+        color: #cbd5e1;
+        padding: 12px 16px;
+    }
+
+
+    .flow-node {
+        position: absolute;
+        min-width: 160px;
+        border-radius: 12px;
+        background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+        border: 1px solid rgba(255,255,255,0.05);
+        box-shadow: 0 8px 32px rgba(2,6,23,0.6), inset 0 1px 0 rgba(255,255,255,0.05);
+        backdrop-filter: blur(8px);
+    }
+
+        /* Group nodes should be behind edges and regular nodes */
+        .flow-node[kind="Group"] {
+            z-index: 1 !important;
+        }
+
+
+
+    .flow-grid-lines {
+        background: #111827;
+        background-image:
+        /* Main grid lines */
+        linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px),
+        /* Minor grid lines */
+        linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+        background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
+        background-position: 0 0, /* Main grid */
+        0 0, /* Main grid */
+        0 0, /* Minor grid */
+        0 0; /* Minor grid */
+    }
+
+    /* Input box styles */
+    .input-box {
+        width: 90%;
+        padding: 6px 8px;
+        border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 6px;
+        background: rgba(255,255,255,0.05);
+        color: #fff;
+        font-size: 12px;
+        outline: none;
+        transition: all 0.2s ease;
+        margin: 4px 0;
+        pointer-events: auto;
+        cursor: text;
+    }
+
+    :deep .input-box:focus {
+        border-color: var(--fg-accent);
+        background: rgba(255,255,255,0.1);
+    }
+
+    .input-box::placeholder {
+        color: rgba(255,255,255,0.5);
+    }
+
+    .title-container {
+        position: relative;
+    }
+
+    .execution-progress {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 3px;
+        background: rgba(255, 255, 255, 0.1);
+        overflow: hidden;
+    }
+
+        .execution-progress::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(90deg, transparent 0%, #4CAF50 25%, #8BC34A 50%, #4CAF50 75%, transparent 100%);
+            animation: progress-slide 1.5s ease-in-out infinite;
+        }
+
+    @@keyframes progress-slide {
+        0% {
+            transform: translateX(-100%);
+        }
+
+        100% {
+            transform: translateX(100%);
+        }
+    }
+
+</style>

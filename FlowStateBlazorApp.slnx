@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="FlowStateBlazorApp.Library/FlowStateBlazorApp.Library.csproj" />
+  <Project Path="FlowStateBlazorApp/FlowStateBlazorApp.Client/FlowStateBlazorApp.Client.csproj" />
+  <Project Path="FlowStateBlazorApp/FlowStateBlazorApp/FlowStateBlazorApp.csproj" />
+</Solution>

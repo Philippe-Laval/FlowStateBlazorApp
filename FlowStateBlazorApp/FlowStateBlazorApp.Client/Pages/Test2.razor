@@ -1,0 +1,20 @@
+﻿@page "/test2"
+@rendermode InteractiveWebAssembly
+@using FlowState.Components
+@using FlowState.Models
+
+<FlowCanvas Height="100vh" Width="100vw" Graph="graph">
+    <BackgroundContent>
+        <FlowBackground class="test-bg" />
+    </BackgroundContent>
+</FlowCanvas>
+
+<style>
+    .test-bg {
+        background: #111827;
+    }
+</style>
+
+@code {
+    FlowGraph graph = new();
+}

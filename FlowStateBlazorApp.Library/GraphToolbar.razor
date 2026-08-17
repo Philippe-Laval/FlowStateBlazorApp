@@ -1,0 +1,178 @@
+<div class="toolbar">
+    <button class="btn btn-success" @onclick="OnSave">💾 Save Graph</button>
+    <button class="btn btn-danger" @onclick="OnClear">🗑️ Clear Graph</button>
+    <button class="btn btn-info" @onclick="OnLoad">📂 Load Graph</button>
+    <button class="btn btn-execute" @onclick="OnExecute">▶️ Execute Graph</button>
+    <button class="btn btn-secondary" @onclick="OnToggleReadOnly">@(IsReadOnly ? "🔒 Read-Only" : "🔓 Enable Editing")</button>
+    <button class="btn btn-secondary" @onclick="OnUndo">↶ Undo</button>
+    <button class="btn btn-secondary" @onclick="OnRedo">↷ Redo</button>
+    <button class="btn btn-arrange" @onclick="OnArrange">⬛ Arrange</button>
+    
+    <!-- Canvas Mode Buttons -->
+    <div class="mode-group">
+        <button class="btn @(CurrentMode == "Select" ? "btn-mode-active" : "btn-mode")" @onclick="OnSetSelectMode">
+            🖱️ Select
+        </button>
+        <button class="btn @(CurrentMode == "Pan" ? "btn-mode-active" : "btn-mode")" @onclick="OnSetPanMode">
+            ✋ Pan
+        </button>
+    </div>
+</div>
+
+@code {
+    [Parameter] public EventCallback OnSave { get; set; }
+    [Parameter] public EventCallback OnClear { get; set; }
+    [Parameter] public EventCallback OnLoad { get; set; }
+    [Parameter] public EventCallback OnExecute { get; set; }
+    [Parameter] public EventCallback OnToggleReadOnly { get; set; }
+    [Parameter] public EventCallback OnUndo { get; set; }
+    [Parameter] public EventCallback OnRedo { get; set; }
+    [Parameter] public EventCallback OnArrange { get; set; }
+    [Parameter] public EventCallback OnSetSelectMode { get; set; }
+    [Parameter] public EventCallback OnSetPanMode { get; set; }
+    [Parameter] public bool IsReadOnly { get; set; }
+    [Parameter] public string CurrentMode { get; set; } = "Select";
+}
+
+<style>
+.toolbar {
+    height: 60px;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 20px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* Base button styles */
+.btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    outline: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.btn:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Button variants */
+.btn-primary {
+    background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+}
+
+.btn-success:hover {
+    background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+}
+
+.btn-danger:hover {
+    background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
+}
+
+.btn-info {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+}
+
+.btn-info:hover {
+    background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+}
+
+.btn-warning {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+}
+
+.btn-warning:hover {
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+}
+
+.btn-execute {
+    background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+    color: white;
+}
+
+.btn-execute:hover {
+    background: linear-gradient(135deg, #22d3ee 0%, #06b6d4 100%);
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
+}
+
+.btn-arrange {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+}
+
+.btn-arrange:hover {
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+}
+
+/* Mode group styles */
+.mode-group {
+    display: flex;
+    gap: 4px;
+    margin-left: 16px;
+    padding-left: 16px;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.btn-mode {
+    background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.btn-mode:hover {
+    background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+    color: white;
+}
+
+.btn-mode-active {
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+    color: white;
+    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.3);
+}
+
+.btn-mode-active:hover {
+    background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%);
+}
+</style>
+
