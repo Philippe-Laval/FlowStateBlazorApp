@@ -145,7 +145,8 @@
     
     private async Task HandleContextMenu(CanvasContextMenuEventArgs e)
     {
-        if (contextMenu != null)
+        // When the graph is not editable, don't show the context menu
+        if (!isReadOnly && contextMenu != null)
         {
             // Pass both screen coords (for menu positioning) and canvas coords (for node creation)
             await contextMenu.ShowAsync(e.ClientX, e.ClientY, e.X, e.Y);
