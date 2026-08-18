@@ -1,6 +1,6 @@
-@FlowStateBlazorApi_HostAddress = http://localhost:5189
+@FlowStateBlazorApi_HostAddress = http://localhost:5189/api
 
-GET {{FlowStateBlazorApi_HostAddress}}/weatherforecast/
+GET {{FlowStateBlazorApi_HostAddress}}/FlowGraphDescription/
 Accept: application/json
 
 ###
