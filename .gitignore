@@ -352,3 +352,5 @@ MigrationBackup/
 /FlowStateBlazor.Data/appsettings.json
 /FlowStateBlazor.Data/appsettings.Development.jon
 /FlowStateBlazorApp/FlowStateBlazorApp/appsettings.Development.json
+/FlowStateBlazorApi/appsettings.Development.json
+/FlowStateBlazorApi/appsettings.json
