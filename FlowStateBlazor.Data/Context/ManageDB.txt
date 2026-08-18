@@ -1,0 +1,50 @@
+﻿https://learn.microsoft.com/en-us/ef/core/cli/dotnet
+dotnet tool install --global dotnet-ef
+
+Mise à jour des tools EF Core
+
+https://docs.microsoft.com/fr-fr/ef/core/cli/dotnet#update-the-tools
+dotnet tool update --global dotnet-ef
+
+Migrations avec plusieurs fournisseurs
+https://docs.microsoft.com/fr-fr/ef/core/managing-schemas/migrations/providers?tabs=dotnet-core-cli
+
+For Philippe's computer:
+cd C:\CodeGithubPerso\FlowStateBlazorApp\FlowStateBlazor.Data
+
+Ajout des transitions
+dotnet ef migrations add InitialCreate --context FlowStateSqlServerContext --output-dir Migrations/SqlServerMigrations
+dotnet ef migrations add InitialCreate --context FlowStateOracleContext --output-dir Migrations/OracleMigrations
+dotnet ef migrations add InitialCreate --context FlowStateSqliteContext --output-dir Migrations/SqliteMigrations
+
+Supprime la dernière migration (au cas où on s'est trompé)
+dotnet ef migrations remove --context FlowStateSqlServerContext
+dotnet ef migrations remove --context FlowStateOracleContext
+dotnet ef migrations remove --context FlowStateSqliteContext
+
+
+Mise à jour de la base pour appliquer les transitions
+dotnet ef database update --context FlowStateSqlServerContext
+dotnet ef database update --context FlowStateOracleContext
+dotnet ef database update --context FlowStateSqliteContext --connection "Data Source=C:\\Test\\FLOWSTATE.db"
+
+Mise à jour pour revenir à un état précédant de la base
+dotnet ef database update 20240410151930_MobileDirectEmission --context RseSqlServerContext
+
+Génération des scrips sql
+
+Create 
+
+dotnet ef migrations script --idempotent --context FlowStateSqlServerContext --output Scripts/SqlServerScripts/CreationSqlServer.sql
+dotnet ef migrations script --idempotent --context FlowStateOracleContext --output Scripts/OracleScripts/CreationOracle.sql
+dotnet ef migrations script --context FlowStateSqliteContext --output Scripts/SqliteScripts/CreationSqlite.sql
+
+Drop
+
+dotnet ef migrations script InitialCreate 0 --context FlowStateSqlServerContext --output Scripts/SqlServerScripts/DropSqlServer.sql
+dotnet ef migrations script InitialCreate 0 --context FlowStateOracleContext --output Scripts/OracleScripts/DropOracle.sql
+dotnet ef migrations script InitialCreate 0 --context FlowStateSqliteContext --output Scripts/SqliteScripts/DropSqlite.sql
+
+Exemple popur avoir un code sql et tester sur la base en direct
+dotnet ef migrations script CommutingTransportEmission CommutingTransportEmission2 --context FlowStateSqlServerContext --output Scripts/SqlServerScripts/test.sql
+

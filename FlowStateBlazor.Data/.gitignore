@@ -1,0 +1,9 @@
+# Secrets et configuration locale
+appsettings.*.json
+secrets.json
+*.db
+*.sqlite
+
+# Fichiers de configuration sensibles
+ConnectionStrings.local.json
+local.settings.json

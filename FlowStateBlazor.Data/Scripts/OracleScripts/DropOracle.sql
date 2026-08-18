@@ -1,0 +1,7 @@
+﻿DROP TABLE "FLOW_FLOWGRAPH_DESCRIPTION"
+/
+
+DELETE FROM "__EFMigrationsHistory"
+WHERE "MigrationId" = N'20260818093559_InitialCreate'
+/
+
