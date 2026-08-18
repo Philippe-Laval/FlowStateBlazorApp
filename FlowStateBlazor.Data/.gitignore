@@ -1,5 +1,6 @@
 # Secrets et configuration locale
 appsettings.*.json
+appsettings.json
 secrets.json
 *.db
 *.sqlite
