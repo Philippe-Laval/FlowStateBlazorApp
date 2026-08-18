@@ -1,4 +1,5 @@
 <Solution>
+  <Project Path="FlowStateBlazor.Data.Tests/FlowStateBlazor.Data.Tests.csproj" Id="7b2b6da3-fc8f-4fae-afc5-3f68710f28c1" />
   <Project Path="FlowStateBlazor.Data/FlowStateBlazor.Data.csproj" Id="7bbb1ef5-67f1-4c30-871b-2d727530c5d7" />
   <Project Path="FlowStateBlazor.Shared/FlowStateBlazor.Shared.csproj" Id="f4d3c6c5-bcc3-4732-a931-4c3e9aea84f8" />
   <Project Path="FlowStateBlazorApi/FlowStateBlazorApi.csproj" Id="525fe8d3-5ec0-4c38-aece-4eb53350abd5" />
